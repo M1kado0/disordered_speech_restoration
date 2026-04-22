@@ -26,6 +26,8 @@ class ModelConfig:
     language: str
     task: str
     max_label_length: int
+    torch_dtype: str = "float32"
+    attn_implementation: str = "eager"
 
 
 @dataclass(frozen=True)

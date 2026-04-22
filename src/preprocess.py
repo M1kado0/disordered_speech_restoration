@@ -19,12 +19,21 @@ def normalize_text(text: str) -> str:
 
 def build_preprocess_fn(processor: WhisperProcessor, config: AppConfig):
     def preprocess(batch: dict[str, Any]) -> dict[str, Any]:
-        audio = batch[config.dataset.audio_column]
+        audio_info = batch[config.dataset.audio_column]
         transcript = batch[config.dataset.text_column]
 
+        # Manually decode audio from bytes since we bypass torchcodec
+        if audio_info.get("bytes"):
+            import io
+            import soundfile as sf
+            array, sr = sf.read(io.BytesIO(audio_info["bytes"]))
+        else:
+            import soundfile as sf
+            array, sr = sf.read(audio_info["path"])
+
         features = processor.feature_extractor(
-            audio["array"],
-            sampling_rate=audio["sampling_rate"],
+            array,
+            sampling_rate=sr,
             return_attention_mask=False,
         )
         labels = processor.tokenizer(

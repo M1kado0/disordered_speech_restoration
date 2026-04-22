@@ -6,10 +6,23 @@ from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 from src.config import AppConfig
 
+import torch
 
 def load_whisper_processor_and_model(config: AppConfig):
     processor = WhisperProcessor.from_pretrained(config.model.base_id)
-    model = WhisperForConditionalGeneration.from_pretrained(config.model.base_id)
+    
+    dtype_mapping = {
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+        "float32": torch.float32
+    }
+    
+    # Load model using configurations
+    model = WhisperForConditionalGeneration.from_pretrained(
+        config.model.base_id,
+        torch_dtype=dtype_mapping.get(config.model.torch_dtype, torch.float32),
+        attn_implementation=config.model.attn_implementation
+    )
 
     model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(
         language=config.model.language,

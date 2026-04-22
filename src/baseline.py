@@ -28,20 +28,73 @@ def run_baseline(token: str | None = None, split_name: str | None = None):
     predictions: list[str] = []
     references: list[str] = []
 
-    for example in split:
-        audio = example[config.dataset.audio_column]
+    # Configure DataLoader and Batch Processing for speed!
+    from torch.utils.data import DataLoader
+    from tqdm import tqdm
+
+    def collate_fn(batch):
+        audio_arrays = []
+        texts = []
+        for item in batch:
+            # Manually decode audio from bytes since we bypass torchcodec
+            audio_info = item[config.dataset.audio_column]
+            if audio_info.get("bytes"):
+                import io
+                import soundfile as sf
+                array, sr = sf.read(io.BytesIO(audio_info["bytes"]))
+                audio_arrays.append({"array": array, "sampling_rate": sr})
+            else:
+                import soundfile as sf
+                array, sr = sf.read(audio_info["path"])
+                audio_arrays.append({"array": array, "sampling_rate": sr})
+            
+            texts.append(item[config.dataset.text_column])
+
+        return {
+            "audio": audio_arrays,
+            "text": texts
+        }
+        
+    eval_dataloader = DataLoader(
+        split,
+        batch_size=64,
+        collate_fn=collate_fn,
+        num_workers=0
+    )
+    
+    dtype_mapping = {
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+        "float32": torch.float32
+    }
+    feature_dtype = dtype_mapping.get(config.model.torch_dtype, torch.float32)
+
+    for batch in tqdm(eval_dataloader, desc="Running baseline evaluation"):
+        # Combine batches of audio
+        audio_arrays = [audio["array"] for audio in batch["audio"]]
+        sampling_rates = batch["audio"][0]["sampling_rate"]
+
         inputs = processor.feature_extractor(
-            audio["array"],
-            sampling_rate=audio["sampling_rate"],
+            audio_arrays,
+            sampling_rate=sampling_rates,
             return_attention_mask=False,
             return_tensors="pt",
         )
-        input_features = inputs.input_features.to(device)
+        
+        # Cast inputs explicitly to the same precision type your model is configured as
+        input_features = inputs.input_features.to(device, dtype=feature_dtype)
+
         with torch.no_grad():
-            generated_ids = model.generate(input_features)
-        text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        predictions.append(normalize_text(text))
-        references.append(normalize_text(str(example[config.dataset.text_column])))
+            generated_ids = model.generate(
+                input_features, 
+                language="en", 
+                task="transcribe" 
+            )
+            
+        decoded_texts = processor.batch_decode(generated_ids, skip_special_tokens=True)
+        
+        predictions.extend([normalize_text(text) for text in decoded_texts])
+        references.extend([normalize_text(str(text)) for text in batch["text"]])
 
     metrics = compute_asr_metrics(predictions, references)
     return {

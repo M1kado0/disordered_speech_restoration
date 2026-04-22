@@ -28,7 +28,15 @@ def load_private_dataset(config: DatasetConfig, token: str | None = None) -> Dat
     if config.text_column not in columns:
         raise KeyError(f"Text column '{config.text_column}' not found in dataset")
 
-    dataset = dataset.cast_column(config.audio_column, Audio(sampling_rate=config.target_sampling_rate))
+    # Use decode=False to bypass torchcodec C++ bugs, allowing us to decode audio manually
+    dataset = dataset.cast_column(config.audio_column, Audio(decode=False))
+
+    # Create a validation split from the train split if it doesn't exist
+    if config.validation_split not in dataset and config.train_split in dataset:
+        print(f"Validation split '{config.validation_split}' not found. Creating a random 10% split from '{config.train_split}'.")
+        splits = dataset[config.train_split].train_test_split(test_size=0.1, seed=42)
+        dataset[config.train_split] = splits["train"]
+        dataset[config.validation_split] = splits["test"]
 
     return DatasetBundle(
         dataset=dataset,

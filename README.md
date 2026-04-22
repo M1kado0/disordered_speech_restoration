@@ -11,7 +11,7 @@ pip install -e .
 ```
 
 ```bash
-huggingface-cli login
+hf auth login
 ```
 
 ## Run
@@ -45,4 +45,3 @@ PESQ and STOI are included as audio-quality comparison helpers for original vers
 - The dataset is private, so Hugging Face authentication is required.
 - The first implementation excludes any LLM-based post-processing.
 - If the dataset does not expose official train/validation/test splits, add a deterministic split step next.
-# Disordered Speech Restoration
