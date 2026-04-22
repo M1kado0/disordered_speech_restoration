@@ -13,10 +13,15 @@ from src.modeling import load_whisper_processor_and_model
 from src.preprocess import normalize_text
 
 
-def run_baseline(token: str | None = None, split_name: str | None = None):
+def run_baseline(token: str | None = None, split_name: str | None = None, adapter_path: str | None = None):
     config = load_config()
     bundle = load_private_dataset(config.dataset, token=token)
     processor, model = load_whisper_processor_and_model(config)
+
+    if adapter_path:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, adapter_path)
+        model = model.merge_and_unload()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -110,9 +115,10 @@ def main() -> None:
     parser.add_argument("--hf-token", default=None, help="Hugging Face token for private dataset access")
     parser.add_argument("--split", default=None, help="Dataset split to evaluate")
     parser.add_argument("--output", default="outputs/baseline_metrics.json")
+    parser.add_argument("--adapter-path", default=None, help="Path to LoRA adapter to load on top of the base model")
     args = parser.parse_args()
 
-    result = run_baseline(token=args.hf_token, split_name=args.split)
+    result = run_baseline(token=args.hf_token, split_name=args.split, adapter_path=args.adapter_path)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, indent=2))
