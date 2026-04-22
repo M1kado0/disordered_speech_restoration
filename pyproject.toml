@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "disordered-speech-restoration"
+version = "0.1.0"
+description = "Whisper baseline and LoRA fine-tuning for disordered speech restoration"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "accelerate>=0.33.0",
+  "datasets>=2.20.0",
+  "evaluate>=0.4.2",
+  "jiwer>=3.0.4",
+  "numpy>=1.24.0",
+  "pandas>=2.0.0",
+  "peft>=0.12.0",
+  "pesq>=0.0.4",
+  "pystoi>=0.4.1",
+  "pyyaml>=6.0.1",
+  "soundfile>=0.12.1",
+  "torch>=2.2.0",
+  "transformers>=4.44.0",
+]
+
+[project.scripts]
+dsr-baseline = "src.baseline:main"
+dsr-train-lora = "src.train_lora:main"
+dsr-evaluate = "src.evaluate:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
