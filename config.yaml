@@ -15,14 +15,14 @@ model:
   base_id: openai/whisper-medium
   language: en
   task: transcribe
-  max_label_length: 256
+  max_label_length: 64
   torch_dtype: float16
   attn_implementation: sdpa
 
 training:
   output_dir: outputs/lora_whisper_medium
-  per_device_train_batch_size: 16
-  per_device_eval_batch_size: 16
+  per_device_train_batch_size: 12
+  per_device_eval_batch_size: 12
   gradient_accumulation_steps: 1
   learning_rate: 0.0001
   warmup_steps: 100
@@ -33,18 +33,18 @@ training:
   save_steps: 500
   logging_steps: 50
   fp16: true
-  gradient_checkpointing: true
+  gradient_checkpointing: false
   max_train_steps: null
+  dataloader_num_workers: 8
+  dataloader_pin_memory: true
 
 lora:
-  r: 16
-  lora_alpha: 32
+  r: 32
+  lora_alpha: 64
   lora_dropout: 0.05
   target_modules:
     - q_proj
-    - k_proj
     - v_proj
-    - out_proj
 
 evaluation:
   metrics:

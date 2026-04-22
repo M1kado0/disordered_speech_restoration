@@ -47,6 +47,8 @@ class TrainingConfig:
     fp16: bool
     gradient_checkpointing: bool
     max_train_steps: int | None
+    dataloader_num_workers: int = 4
+    dataloader_pin_memory: bool = True
 
 
 @dataclass(frozen=True)
